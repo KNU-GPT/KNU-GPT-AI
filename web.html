@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>FAISS 트리 검색</title>
+  <style>
+    body { font-family: 'Pretendard', sans-serif; margin: 40px; }
+    select, input { margin: 5px; padding: 5px; }
+    .node-select { margin-bottom: 10px; }
+    .result { border-bottom: 1px solid #ddd; margin: 10px 0; padding-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h2>📚 트리 기반 FAISS 검색</h2>
+
+  <div id="pathSelects"></div>
+
+  <div>
+    <input id="query" type="text" placeholder="검색할 질문" size="50"><br>
+    <label>Top-K: <input id="topK" type="number" value="5"></label>
+    <label>Threshold: <input id="threshold" type="number" step="0.05" value="0.6"></label>
+    <button onclick="search()">검색</button>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <script>
+    let tree = {};
+    let path = [];
+    let currentNode = {};
+
+    async function loadTree() {
+      const res = await fetch("http://localhost:8000/tree");
+      tree = await res.json();
+      currentNode = tree;
+      createSelect(currentNode);
+    }
+
+    function createSelect(node) {
+      const container = document.getElementById("pathSelects");
+      container.innerHTML = "";
+
+      let tempNode = tree;
+      path.forEach((p, idx) => {
+        const sel = document.createElement("select");
+        sel.value = p;
+        sel.dataset.level = idx;
+        Object.keys(tempNode).forEach(k => {
+          const opt = document.createElement("option");
+          opt.value = k; opt.textContent = k;
+          if (k === p) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.onchange = (e) => updatePath(e, idx);
+        container.appendChild(sel);
+        tempNode = tempNode[p];
+      });
+
+      if (typeof tempNode === "object" && !Array.isArray(tempNode)) {
+        const sel = document.createElement("select");
+        sel.dataset.level = path.length;
+        const keys = Object.keys(tempNode);
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = ""; defaultOpt.textContent = "선택...";
+        sel.appendChild(defaultOpt);
+        keys.forEach(k => {
+          const opt = document.createElement("option");
+          opt.value = k; opt.textContent = k;
+          sel.appendChild(opt);
+        });
+        sel.onchange = (e) => updatePath(e, path.length);
+        container.appendChild(sel);
+      }
+    }
+
+    function updatePath(event, level) {
+      const val = event.target.value;
+      path = path.slice(0, level);
+      if (val) path.push(val);
+
+      let tempNode = tree;
+      for (const p of path) tempNode = tempNode[p];
+      currentNode = tempNode;
+
+      createSelect(currentNode);
+    }
+
+    async function search() {
+      const query = document.getElementById("query").value;
+      const top_k = document.getElementById("topK").value;
+      const threshold = document.getElementById("threshold").value;
+
+      if (!query.trim()) {
+        alert("검색어를 입력하세요!");
+        return;
+      }
+
+      const res = await fetch("http://localhost:8000/search", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ query, path, top_k, threshold })
+      });
+
+      const data = await res.json();
+      const area = document.getElementById("resultArea");
+      area.innerHTML = `<p>검색 대상: ${data.count}개 / 소요시간: ${data.time}초</p>`;
+
+      if (!data.results || data.results.length === 0) {
+        area.innerHTML += "<p>결과 없음</p>";
+        return;
+      }
+
+      data.results.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "result";
+        div.innerHTML = `<b>[${r.score.toFixed(2)}]</b> ${r.title}<br>${r.paragraph}...`;
+        area.appendChild(div);
+      });
+    }
+
+    loadTree();
+  </script>
+</body>
+</html>

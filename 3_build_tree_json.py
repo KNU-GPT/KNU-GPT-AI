@@ -1,4 +1,3 @@
-# build_tree_json.py
 import os
 import json
 import numpy as np

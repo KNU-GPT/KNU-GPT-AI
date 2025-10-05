@@ -20,6 +20,18 @@ def select_node(tree, depth):
         node = node[choice]
     return node
 
+def print_all_paths(tree, path=None, depth=0):
+    if path is None:
+        path = []
+
+    if isinstance(tree, dict):
+        for key, value in tree.items():
+            print("  " * depth + f"└─ {key}")
+            print_all_paths(value, path + [key], depth + 1)
+    elif isinstance(tree, list):
+        print("  " * depth + f"📄 ({len(tree)}개 항목)")
+
+
 def collect_records(node):
     """선택된 노드 아래 모든 레코드를 리스트로 수집"""
     if isinstance(node, list):
@@ -79,6 +91,9 @@ def search_faiss(query, tree, top_k=5, threshold=0.6):
 if __name__ == "__main__":
     with open(TREE_FILE, 'r', encoding='utf-8') as f:
         tree_db = json.load(f)
+
+    print("📚 가능한 전체 선택 트리 구조:")
+    print_all_paths(tree_db)
 
     query = input("검색할 질문 입력: ")
     top_k = int(input("최대 출력 개수 입력: "))
