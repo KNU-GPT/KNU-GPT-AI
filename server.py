@@ -7,7 +7,7 @@ import faiss
 from sentence_transformers import SentenceTransformer
 import time
 import uvicorn
-
+#ㅇ
 TREE_FILE = 'index_tree_db.json'
 FAISS_INDEX_FILE = 'faiss.index'
 MODEL_NAME = 'BM-K/KoSimCSE-roberta-multitask'
